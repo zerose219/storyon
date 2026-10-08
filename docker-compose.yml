@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: storyon-postgres
+    environment:
+      POSTGRES_DB: storyon_db
+      POSTGRES_USER: storyon_app
+      POSTGRES_PASSWORD: storyon
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
