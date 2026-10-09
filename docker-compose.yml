@@ -19,8 +19,18 @@ services:
     container_name: storyon-backend
     ports:
       - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://storyon_app:storyon@postgres:5432/storyon_db
     depends_on:
       - postgres
+    networks:
+      - storyon-network
+
+  redis:
+    image: redis:7
+    container_name: storyon-redis
+    ports:
+      - "6379:6379"
     networks:
       - storyon-network
 
