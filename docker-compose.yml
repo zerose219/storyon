@@ -10,6 +10,23 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - storyon-network
+
+  backend:
+    build:
+      context: ./backend
+    container_name: storyon-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    networks:
+      - storyon-network
 
 volumes:
   postgres_data:
+
+networks:
+  storyon-network:
+    driver: bridge
