@@ -1,0 +1,86 @@
+.signup-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: #f8f7fc;
+}
+
+.signup-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 36px;
+  background: #fff;
+  border: 1px solid #e9e5f0;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgb(40 25 70 / 8%);
+}
+
+.signup-logo {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: #6d4aff;
+  font-size: 28px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.signup-card h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+}
+
+.signup-description {
+  margin: 0 0 28px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.signup-card form {
+  display: flex;
+  flex-direction: column;
+}
+
+.signup-card label {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.signup-card input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.signup-card input:focus {
+  outline: 2px solid #d8ccff;
+  border-color: #6d4aff;
+}
+
+.signup-card button {
+  margin-top: 28px;
+  padding: 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #6d4aff;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.signup-card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.signup-message {
+  margin: 20px 0 0;
+  color: #5140a0;
+  font-size: 14px;
+  line-height: 1.6;
+}
