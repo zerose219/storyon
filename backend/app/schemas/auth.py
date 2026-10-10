@@ -23,3 +23,5 @@ class LoginResponse(BaseModel):
     nickname: str
     email: EmailStr
     message: str
+    access_token: str
+    token_type: str = "bearer"

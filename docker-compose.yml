@@ -19,6 +19,8 @@ services:
     container_name: storyon-backend
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg2://storyon_app:storyon@postgres:5432/storyon_db
     depends_on:

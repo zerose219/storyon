@@ -10,7 +10,12 @@ from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
 )
-from app.security import hash_password, verify_password
+
+from app.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["인증"])
 
@@ -75,9 +80,13 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="이메일 또는 비밀번호가 올바르지 않습니다.",
         )
 
+    access_token = create_access_token(user.user_id)
+
     return LoginResponse(
         user_id=user.user_id,
         nickname=user.nickname,
         email=user.email,
         message="로그인에 성공했습니다.",
+        access_token=access_token,
+        token_type="bearer",
     )
