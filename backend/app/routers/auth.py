@@ -17,6 +17,10 @@ from app.security import (
     create_access_token,
 )
 
+from fastapi import Depends
+from app.dependencies import get_current_user
+from app.models.user import User
+
 router = APIRouter(prefix="/api/auth", tags=["인증"])
 
 
@@ -90,3 +94,13 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         access_token=access_token,
         token_type="bearer",
     )
+
+@router.get("/me")
+def get_my_info(
+    current_user: User = Depends(get_current_user),
+):
+    return {
+        "user_id": current_user.user_id,
+        "nickname": current_user.nickname,
+        "email": current_user.email,
+    }

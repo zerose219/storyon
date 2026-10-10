@@ -15,9 +15,12 @@ export interface LoginRequest {
   password: string;
 }
 
+
 export interface LoginResponse {
   user_id: number;
   nickname: string;
   email: string;
   message: string;
+  access_token: string;
+  token_type: string;
 }
