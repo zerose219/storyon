@@ -1,4 +1,9 @@
-import type { SignupRequest, SignupResponse } from "../types/auth";
+import type {
+  SignupRequest,
+  SignupResponse,
+  LoginRequest,
+  LoginResponse,
+} from "../types/auth";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -24,4 +29,28 @@ export async function signup(
   }
 
   return result as SignupResponse;
+}
+
+export async function login(
+  data: LoginRequest,
+): Promise<LoginResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      typeof result.detail === "string"
+        ? result.detail
+        : "로그인 요청에 실패했습니다.",
+    );
+  }
+
+  return result as LoginResponse;
 }
