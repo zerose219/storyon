@@ -9,7 +9,12 @@ import {
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import MyPage from "./pages/MyPage";
+import Posts from "./pages/Posts";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PostCreate from "./pages/PostCreate";
+import PostDetail from "./pages/PostDetail";
+import PostEdit from "./pages/PostEdit";
+
 
 function App() {
   return (
@@ -21,6 +26,10 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/mypage" element={<MyPage />} />
+          <Route path="/posts" element={<Posts />} />
+          <Route path="/posts/new" element={<PostCreate />} />
+          <Route path="/posts/:postId" element={<PostDetail />} />
+          <Route path="/posts/:postId/edit" element={<PostEdit />} />
         </Route>
       </Routes>
     </BrowserRouter>

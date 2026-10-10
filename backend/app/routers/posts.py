@@ -217,3 +217,21 @@ def delete_post(
     db.commit()
 
     return None
+
+
+
+
+# 내 게시글 조회
+@router.get("/my", response_model=list[PostResponse])
+def get_my_posts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    posts = (
+        db.query(Post)
+        .filter(Post.user_id == current_user.user_id)
+        .order_by(Post.created_at.desc())
+        .all()
+    )
+
+    return posts
