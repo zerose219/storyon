@@ -225,3 +225,25 @@ export async function getMyPosts(): Promise<Post[]> {
 
   return response.json();
 }
+
+
+
+// 글 검색
+export async function searchPosts(keyword: string): Promise<Post[]> {
+  const token = localStorage.getItem("access_token");
+
+  const response = await fetch(
+    `http://localhost:8000/api/posts/search?keyword=${encodeURIComponent(keyword)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("게시글 검색에 실패했습니다.");
+  }
+
+  return response.json();
+}

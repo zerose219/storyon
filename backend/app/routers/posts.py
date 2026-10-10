@@ -58,6 +58,26 @@ def create_post(
     return post
 
 
+# 제목 검색
+@router.get("/search", response_model=list[PostResponse])
+def search_posts(
+    keyword: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    posts = (
+        db.query(Post)
+        .filter(
+            Post.status == "PUBLISHED",
+            Post.visibility == "PUBLIC",
+            Post.title.ilike(f"%{keyword}%"),
+        )
+        .order_by(Post.created_at.desc())
+        .all()
+    )
+
+    return posts
+
 
 # 게시글 목록 조회
 @router.get(
