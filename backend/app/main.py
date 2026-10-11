@@ -7,6 +7,8 @@ from app.database import get_db
 from app.routers.auth import router as auth_router
 from app.routers.posts import router as posts_router
 from app.routers.categories import router as categories_router
+from app.routers.comments import router as comments_router
+from app.routers.post_likes import router as post_likes_router
 
 app = FastAPI(title="StoryOn API")
 
@@ -27,7 +29,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(posts_router)
 app.include_router(categories_router)
-
+app.include_router(comments_router)
+app.include_router(post_likes_router)
 
 # 서버 상태 확인
 @app.get("/health")
