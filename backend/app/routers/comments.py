@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import or_
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
@@ -53,10 +54,18 @@ def get_comments(
         .filter(Comment.post_id == post_id)
     )
 
-    # 게시글 작성자가 아닌 사용자는 공개 댓글만 조회할 수 있다.
+    # 게시글 작성자가 아니더라도,
+    # 공개 댓글과 본인이 작성한 댓글은 조회할 수 있다.
     if post.user_id != current_user.user_id:
-        query = query.filter(Comment.is_public == "PUBLIC")
+        query = query.filter(
+            or_(
+                Comment.is_public == "PUBLIC",
+                Comment.user_id == current_user.user_id,
+            )
+        )
+    
 
+    
     comments = query.order_by(
         Comment.created_at.asc(),
         Comment.comment_id.asc(),
