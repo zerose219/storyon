@@ -6,17 +6,23 @@ import {
   type Post,
 } from "../services/posts";
 import { getMyInfo } from "../services/auth";
+import {
+  getCategories,
+  type Category,
+} from "../services/categories";
 
 function PostDetail() {
   const { postId } = useParams();
   const navigate = useNavigate();
 
   const [post, setPost] = useState<Post | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
+  // 게시글 및 카테고리 조회
   useEffect(() => {
     async function fetchPost() {
       const id = Number(postId);
@@ -28,13 +34,18 @@ function PostDetail() {
       }
 
       try {
-        const data = await getPost(id);
-        setPost(data);
+        const [postData, categoryData] = await Promise.all([
+          getPost(id),
+          getCategories(),
+        ]);
+
+        setPost(postData);
+        setCategories(categoryData);
       } catch (err) {
         setError(
           err instanceof Error
             ? err.message
-            : "게시글을 불러오지 못했습니다."
+            : "게시글 또는 카테고리를 불러오지 못했습니다."
         );
       } finally {
         setLoading(false);
@@ -44,19 +55,21 @@ function PostDetail() {
     fetchPost();
   }, [postId]);
 
+  // 로그인한 사용자 정보 조회
   useEffect(() => {
-  async function fetchMyInfo() {
-    try {
-      const user = await getMyInfo();
-      setCurrentUserId(user.user_id);
-    } catch {
-      setCurrentUserId(null);
+    async function fetchMyInfo() {
+      try {
+        const user = await getMyInfo();
+        setCurrentUserId(user.user_id);
+      } catch {
+        setCurrentUserId(null);
+      }
     }
-  }
 
-  fetchMyInfo();
-}, []);
+    fetchMyInfo();
+  }, []);
 
+  // 게시글 삭제
   async function handleDelete() {
     if (!post) {
       return;
@@ -96,7 +109,10 @@ function PostDetail() {
     return (
       <div>
         <p>{error}</p>
-        <button onClick={() => navigate("/posts")}>
+        <button
+          type="button"
+          onClick={() => navigate("/posts")}
+        >
           목록으로
         </button>
       </div>
@@ -107,18 +123,29 @@ function PostDetail() {
     return <p>게시글이 없습니다.</p>;
   }
 
+  // 카테고리 ID에 해당하는 이름 찾기
+  const category = categories.find(
+    (item) => item.category_id === post.category_id
+  );
+
   return (
     <div>
       <h1>{post.title}</h1>
 
       <p>작성자 ID: {post.user_id}</p>
-      <p>카테고리 ID: {post.category_id}</p>
+      <p>
+        카테고리: {category?.category_name ?? "미분류"}
+      </p>
+
       <p>
         상태: {post.status === "DRAFT" ? "임시저장" : "게시됨"}
       </p>
+
       <p>
-        공개 설정: {post.visibility === "PUBLIC" ? "공개" : "비공개"}
+        공개 설정:{" "}
+        {post.visibility === "PUBLIC" ? "공개" : "비공개"}
       </p>
+
       <p>
         작성일: {new Date(post.created_at).toLocaleString()}
       </p>
@@ -129,18 +156,22 @@ function PostDetail() {
         {post.content}
       </div>
 
-      {error && <p>{error}</p>}
+      {error && <p role="alert">{error}</p>}
 
       <div>
         {currentUserId === post.user_id && (
           <>
             <button
-              onClick={() => navigate(`/posts/${post.post_id}/edit`)}
+              type="button"
+              onClick={() =>
+                navigate(`/posts/${post.post_id}/edit`)
+              }
             >
               수정
             </button>
 
             <button
+              type="button"
               onClick={handleDelete}
               disabled={deleting}
             >
@@ -149,7 +180,10 @@ function PostDetail() {
           </>
         )}
 
-        <button onClick={() => navigate("/posts")}>
+        <button
+          type="button"
+          onClick={() => navigate("/posts")}
+        >
           목록으로
         </button>
       </div>

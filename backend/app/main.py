@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.routers.auth import router as auth_router
 from app.routers.posts import router as posts_router
-
+from app.routers.categories import router as categories_router
 
 app = FastAPI(title="StoryOn API")
 
@@ -26,6 +26,7 @@ app.add_middleware(
 # 인증 API 등록
 app.include_router(auth_router)
 app.include_router(posts_router)
+app.include_router(categories_router)
 
 
 # 서버 상태 확인
