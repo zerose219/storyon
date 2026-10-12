@@ -65,3 +65,23 @@ def test_post_update_allows_partial_update():
     assert post.title == "수정된 제목"
     assert post.content is None
     assert post.category_id is None
+
+
+def test_post_update_rejects_empty_title():
+    with pytest.raises(ValidationError):
+        PostUpdate(title="")
+
+
+def test_post_update_rejects_invalid_status():
+    with pytest.raises(ValidationError):
+        PostUpdate(status="WAITING")
+
+
+def test_post_update_rejects_invalid_visibility():
+    with pytest.raises(ValidationError):
+        PostUpdate(visibility="HIDDEN")
+
+
+def test_post_update_rejects_invalid_category_id():
+    with pytest.raises(ValidationError):
+        PostUpdate(category_id=0)
