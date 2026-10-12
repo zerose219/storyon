@@ -1,0 +1,689 @@
+
+from app.database import SessionLocal
+from app.models.category import Category
+
+
+
+def test_create_post_success(client, create_user, create_category):
+    user = create_user(
+        nickname="postuser",
+        email="postuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "첫 번째 테스트 게시글",
+            "content": "게시글 작성 API 테스트입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["title"] == "첫 번째 테스트 게시글"
+    assert data["content"] == "게시글 작성 API 테스트입니다."
+    assert data["category_id"] == category_id
+
+
+def test_create_post_category_not_found(client, create_user):
+    user = create_user(
+        nickname="postuser",
+        email="postuser@example.com",
+    )
+
+    response = client.post(
+        "/api/posts",
+        headers=user["headers"],
+        json={
+            "title": "카테고리 없는 게시글",
+            "content": "존재하지 않는 카테고리를 지정합니다.",
+            "category_id": 999999,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+
+    assert response.status_code == 404
+
+
+def test_create_post_without_token(client):
+    response = client.post(
+        "/api/posts",
+        json={
+            "title": "인증 없는 게시글",
+            "content": "토큰 없이 게시글을 작성합니다.",
+            "category_id": 1,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_get_posts_success(client, create_user, create_category):
+    user = create_user(
+        nickname="listuser",
+        email="listuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "목록 조회 테스트",
+            "content": "게시글 목록 조회를 확인합니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+
+    response = client.get("/api/posts", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "목록 조회 테스트"
+
+
+def test_get_my_posts_success(client, create_user, create_category):
+    user = create_user(
+        nickname="mylistuser",
+        email="mylistuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "내 게시글 조회 테스트",
+            "content": "내가 작성한 게시글 목록을 확인합니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+
+    response = client.get("/api/posts/my", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "내 게시글 조회 테스트"
+
+
+def test_get_post_detail_success(client, create_user, create_category):
+    user = create_user(
+        nickname="detailuser",
+        email="detailuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "상세 조회 테스트",
+            "content": "게시글 상세 내용을 확인합니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    response = client.get(
+        f"/api/posts/{post_id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["post_id"] == post_id
+    assert data["title"] == "상세 조회 테스트"
+    assert data["content"] == "게시글 상세 내용을 확인합니다."
+
+
+def test_get_post_not_found(client, create_user):
+    user = create_user(
+        nickname="missinguser",
+        email="missinguser@example.com",
+    )
+
+    response = client.get(
+        "/api/posts/999999",
+        headers=user["headers"],
+    )
+
+    assert response.status_code == 404
+
+
+def test_update_post_success(client, create_user, create_category):
+    user = create_user(
+        nickname="updateuser",
+        email="updateuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "수정 전 제목",
+            "content": "수정 전 내용",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    update_response = client.patch(
+        f"/api/posts/{post_id}",
+        headers=headers,
+        json={
+            "title": "수정 후 제목",
+            "content": "수정 후 내용",
+        },
+    )
+
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data["title"] == "수정 후 제목"
+    assert data["content"] == "수정 후 내용"
+
+
+def test_update_post_forbidden_for_other_user(
+    client, create_user, create_category
+):
+    owner = create_user(
+        nickname="owneruser",
+        email="owneruser@example.com",
+    )
+    other = create_user(
+        nickname="otheruser",
+        email="otheruser@example.com",
+    )
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=owner["headers"],
+        json={
+            "title": "A의 게시글",
+            "content": "A가 작성한 내용",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    response = client.patch(
+        f"/api/posts/{post_id}",
+        headers=other["headers"],
+        json={
+            "title": "B가 바꾼 제목",
+            "content": "B가 바꾼 내용",
+        },
+    )
+
+    assert response.status_code == 403
+
+
+def test_delete_post_success(client, create_user, create_category):
+    user = create_user(
+        nickname="deleteuser",
+        email="deleteuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "삭제할 게시글",
+            "content": "이 게시글은 삭제할 예정입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    delete_response = client.delete(
+        f"/api/posts/{post_id}",
+        headers=headers,
+    )
+    assert delete_response.status_code == 204
+
+    get_response = client.get(
+        f"/api/posts/{post_id}",
+        headers=headers,
+    )
+    assert get_response.status_code == 404
+
+
+def test_delete_post_forbidden_for_other_user(
+    client, create_user, create_category
+):
+    owner = create_user(
+        nickname="deleteowner",
+        email="deleteowner@example.com",
+    )
+    other = create_user(
+        nickname="deleteother",
+        email="deleteother@example.com",
+    )
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=owner["headers"],
+        json={
+            "title": "A의 게시글",
+            "content": "A가 작성한 게시글입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    response = client.delete(
+        f"/api/posts/{post_id}",
+        headers=other["headers"],
+    )
+    assert response.status_code == 403
+
+    get_response = client.get(
+        f"/api/posts/{post_id}",
+        headers=owner["headers"],
+    )
+    assert get_response.status_code == 200
+
+
+def test_search_posts_success(client, create_user, create_category):
+    user = create_user(
+        nickname="searchuser",
+        email="searchuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "Python 알고리즘 공부",
+            "content": "자료구조와 알고리즘을 학습합니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+
+    response = client.get(
+        "/api/posts/search?keyword=Python",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "Python 알고리즘 공부"
+
+
+def test_search_posts_empty_result(client, create_user):
+    user = create_user(
+        nickname="emptysearch",
+        email="emptysearch@example.com",
+    )
+
+    response = client.get(
+        "/api/posts/search?keyword=없는검색어XYZ",
+        headers=user["headers"],
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_search_posts_excludes_private_and_draft(
+    client, create_user, create_category
+):
+    user = create_user(
+        nickname="visibilityuser",
+        email="visibilityuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    public_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "검색대상 공개 게시글",
+            "content": "공개된 게시글입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert public_response.status_code == 201
+
+    private_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "검색대상 비공개 게시글",
+            "content": "비공개 게시글입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PRIVATE",
+        },
+    )
+    assert private_response.status_code == 201
+
+    draft_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "검색대상 임시저장 게시글",
+            "content": "임시저장 게시글입니다.",
+            "category_id": category_id,
+            "status": "DRAFT",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert draft_response.status_code == 201
+
+    response = client.get(
+        "/api/posts/search?keyword=검색대상",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "검색대상 공개 게시글"
+
+
+def test_update_post_title_only(client, create_user, create_category):
+    user = create_user(
+        nickname="partialupdate",
+        email="partialupdate@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "원래 제목",
+            "content": "그대로 유지할 본문",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    update_response = client.patch(
+        f"/api/posts/{post_id}",
+        headers=headers,
+        json={"title": "변경된 제목"},
+    )
+    assert update_response.status_code == 200
+
+    data = update_response.json()
+    assert data["title"] == "변경된 제목"
+    assert data["content"] == "그대로 유지할 본문"
+    assert data["category_id"] == category_id
+
+
+def test_update_post_category_not_found(
+    client, create_user, create_category
+):
+    user = create_user(
+        nickname="updatecategory",
+        email="updatecategory@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "카테고리 수정 테스트",
+            "content": "원래 카테고리를 유지해야 합니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    response = client.patch(
+        f"/api/posts/{post_id}",
+        headers=headers,
+        json={"category_id": 999999},
+    )
+
+    assert response.status_code == 404
+
+
+def test_get_posts_excludes_private_and_draft(
+    client, create_user, create_category
+):
+    user = create_user(
+        nickname="listvisibility",
+        email="listvisibility@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    public_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "목록 공개 게시글",
+            "content": "공개된 게시글입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert public_response.status_code == 201
+
+    private_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "목록 비공개 게시글",
+            "content": "비공개 게시글입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PRIVATE",
+        },
+    )
+    assert private_response.status_code == 201
+
+    draft_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "목록 임시저장 게시글",
+            "content": "임시저장 게시글입니다.",
+            "category_id": category_id,
+            "status": "DRAFT",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert draft_response.status_code == 201
+
+    response = client.get("/api/posts", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "목록 공개 게시글"
+
+
+def test_get_my_posts_includes_private_and_draft(
+    client, create_user, create_category
+):
+    user = create_user(
+        nickname="myvisibility",
+        email="myvisibility@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    public_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "내 공개 게시글",
+            "content": "공개 게시글입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert public_response.status_code == 201
+
+    private_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "내 비공개 게시글",
+            "content": "비공개 게시글입니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PRIVATE",
+        },
+    )
+    assert private_response.status_code == 201
+
+    draft_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "내 임시저장 게시글",
+            "content": "임시저장 게시글입니다.",
+            "category_id": category_id,
+            "status": "DRAFT",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert draft_response.status_code == 201
+
+    response = client.get("/api/posts/my", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 3
+
+    titles = {post["title"] for post in data}
+    assert titles == {
+        "내 공개 게시글",
+        "내 비공개 게시글",
+        "내 임시저장 게시글",
+    }
+
+
+def test_get_private_post_forbidden_for_other_user(
+    client, create_user, create_category
+):
+    owner = create_user(
+        nickname="privateowner",
+        email="privateowner@example.com",
+    )
+    viewer = create_user(
+        nickname="privateviewer",
+        email="privateviewer@example.com",
+    )
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=owner["headers"],
+        json={
+            "title": "비공개 게시글",
+            "content": "작성자만 볼 수 있습니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PRIVATE",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    response = client.get(
+        f"/api/posts/{post_id}",
+        headers=viewer["headers"],
+    )
+
+    assert response.status_code == 403
+
+
+def test_get_draft_post_forbidden_for_other_user(
+    client, create_user, create_category
+):
+    owner = create_user(
+        nickname="draftowner",
+        email="draftowner@example.com",
+    )
+    viewer = create_user(
+        nickname="draftviewer",
+        email="draftviewer@example.com",
+    )
+    category_id = create_category()
+
+    create_response = client.post(
+        "/api/posts",
+        headers=owner["headers"],
+        json={
+            "title": "임시저장 게시글",
+            "content": "아직 공개하지 않은 글입니다.",
+            "category_id": category_id,
+            "status": "DRAFT",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+    post_id = create_response.json()["post_id"]
+
+    response = client.get(
+        f"/api/posts/{post_id}",
+        headers=viewer["headers"],
+    )
+
+    assert response.status_code == 403
