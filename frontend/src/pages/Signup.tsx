@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { signup } from "../services/auth";
 import "./Signup.css";
 
 function Signup() {
+  const navigate = useNavigate();
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,17 +24,13 @@ function Signup() {
     setIsLoading(true);
 
     try {
-      const result = await signup({
+      await signup({
         nickname,
         email,
         password,
       });
 
-      setMessage(`${result.nickname}님, 회원가입이 완료되었습니다.`);
-      setNickname("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
+      navigate("/login", { replace: true });
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -47,9 +45,9 @@ function Signup() {
   return (
     <main className="signup-page">
       <section className="signup-card">
-        <a className="signup-logo" href="/">
+        <Link className="signup-logo" to="/login">
           StoryOn
-        </a>
+        </Link>
 
         <h1>회원가입</h1>
         <p className="signup-description">

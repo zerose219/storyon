@@ -1,3 +1,4 @@
+import { apiRequest } from "./api";
 
 export type Post = {
   post_id: number;
@@ -11,25 +12,10 @@ export type Post = {
   updated_at: string | null;
 };
 
-const API_URL = "http://localhost:8000/api/posts";
+const API_URL = "/api/posts";
 
 export async function getPosts(): Promise<Post[]> {
-  const token = localStorage.getItem("access_token");
-
-  if (!token) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const response = await fetch(API_URL, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    throw new Error("로그인이 만료되었습니다.");
-  }
+  const response = await apiRequest(API_URL);
 
   if (!response.ok) {
     throw new Error("게시글 목록을 불러오지 못했습니다.");
@@ -37,7 +23,6 @@ export async function getPosts(): Promise<Post[]> {
 
   return response.json();
 }
-
 
 // 게시글 작성
 export type PostCreateRequest = {
@@ -49,57 +34,26 @@ export type PostCreateRequest = {
 };
 
 export async function createPost(
-  postData: PostCreateRequest
+  postData: PostCreateRequest,
 ): Promise<Post> {
-  const token = localStorage.getItem("access_token");
-
-  if (!token) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const response = await fetch(API_URL, {
+  const response = await apiRequest(API_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(postData),
   });
-
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
-  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
     throw new Error(
-      errorData?.detail ?? "게시글 작성에 실패했습니다."
+      errorData?.detail ?? "게시글 작성에 실패했습니다.",
     );
   }
 
   return response.json();
 }
 
-
 // 게시글 상세 조회
 export async function getPost(postId: number): Promise<Post> {
-  const token = localStorage.getItem("access_token");
-
-  if (!token) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const response = await fetch(`${API_URL}/${postId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
-  }
+  const response = await apiRequest(`${API_URL}/${postId}`);
 
   if (!response.ok) {
     if (response.status === 404) {
@@ -116,32 +70,15 @@ export async function getPost(postId: number): Promise<Post> {
   return response.json();
 }
 
-
-
 // 게시글 수정
 export async function updatePost(
   postId: number,
-  postData: Partial<PostCreateRequest>
+  postData: Partial<PostCreateRequest>,
 ): Promise<Post> {
-  const token = localStorage.getItem("access_token");
-
-  if (!token) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const response = await fetch(`${API_URL}/${postId}`, {
+  const response = await apiRequest(`${API_URL}/${postId}`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(postData),
   });
-
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
-  }
 
   if (!response.ok) {
     if (response.status === 403) {
@@ -154,34 +91,18 @@ export async function updatePost(
 
     const errorData = await response.json().catch(() => null);
     throw new Error(
-      errorData?.detail ?? "게시글 수정에 실패했습니다."
+      errorData?.detail ?? "게시글 수정에 실패했습니다.",
     );
   }
 
   return response.json();
 }
 
-
-
 // 게시글 삭제
 export async function deletePost(postId: number): Promise<void> {
-  const token = localStorage.getItem("access_token");
-
-  if (!token) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const response = await fetch(`${API_URL}/${postId}`, {
+  const response = await apiRequest(`${API_URL}/${postId}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
-
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
-  }
 
   if (!response.ok) {
     if (response.status === 403) {
@@ -196,28 +117,9 @@ export async function deletePost(postId: number): Promise<void> {
   }
 }
 
-
-
-
-
 // 내 게시글 조회
 export async function getMyPosts(): Promise<Post[]> {
-  const token = localStorage.getItem("access_token");
-
-  if (!token) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const response = await fetch(`${API_URL}/my`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
-  }
+  const response = await apiRequest(`${API_URL}/my`);
 
   if (!response.ok) {
     throw new Error("내 게시글 목록을 불러오지 못했습니다.");
@@ -226,19 +128,10 @@ export async function getMyPosts(): Promise<Post[]> {
   return response.json();
 }
 
-
-
 // 글 검색
 export async function searchPosts(keyword: string): Promise<Post[]> {
-  const token = localStorage.getItem("access_token");
-
-  const response = await fetch(
-    `http://localhost:8000/api/posts/search?keyword=${encodeURIComponent(keyword)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
+  const response = await apiRequest(
+    `${API_URL}/search?keyword=${encodeURIComponent(keyword)}`,
   );
 
   if (!response.ok) {

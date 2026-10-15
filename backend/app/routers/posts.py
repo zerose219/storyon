@@ -3,8 +3,9 @@ from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from pydantic import ValidationError
 from redis.exceptions import RedisError
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
@@ -29,6 +30,7 @@ def invalidate_posts_cache():
     try:
         redis_client.delete(POSTS_CACHE_KEY)
     except RedisError:
+        # 캐시 삭제 실패가 게시글 작업을 중단시키지 않도록 한다.
         pass
 
 
@@ -96,6 +98,7 @@ def search_posts(
     return posts
 
 
+# DB에서 공개 게시글 목록 조회
 def query_public_posts(db: Session):
     return (
         db.query(Post)
@@ -107,6 +110,7 @@ def query_public_posts(db: Session):
         .all()
     )
 
+
 # 공개 게시글 목록 조회
 @router.get(
     "",
@@ -116,21 +120,27 @@ def get_posts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # 1. Redis 캐시 조회
+    # 1. Redis 캐시 조회 및 데이터 검증
     try:
         cached_posts = redis_client.get(POSTS_CACHE_KEY)
 
         if cached_posts:
+            cached_data = json.loads(cached_posts)
+
             return [
                 PostResponse.model_validate(post)
-                for post in json.loads(cached_posts)
+                for post in cached_data
             ]
 
-    except RedisError:
-        # Redis 조회에 실패하면 DB 조회로 진행
-        pass
+    except (RedisError, json.JSONDecodeError, ValidationError, TypeError):
+        # Redis 조회 실패 또는 캐시 데이터 오류 발생 시
+        # 잘못된 캐시를 삭제하고 DB 조회로 진행한다.
+        try:
+            redis_client.delete(POSTS_CACHE_KEY)
+        except RedisError:
+            pass
 
-    # 2. 캐시가 없거나 Redis 조회에 실패하면 DB 조회
+    # 2. 캐시가 없거나 사용할 수 없으면 DB 조회
     posts = query_public_posts(db)
 
     # 3. DB 결과를 응답 스키마로 변환
@@ -156,7 +166,7 @@ def get_posts(
         )
 
     except RedisError:
-        # 캐시 저장에 실패해도 DB 조회 결과는 반환
+        # 캐시 저장에 실패해도 DB 조회 결과는 반환한다.
         pass
 
     return response_posts

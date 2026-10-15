@@ -1,9 +1,12 @@
 
 from app.database import SessionLocal
 from app.models.category import Category
+from app.models.comment import Comment
+from app.models.post_like import PostLike
 from app.redis_client import redis_client, POSTS_CACHE_KEY
 from unittest.mock import patch
 
+import json
 def test_create_post_success(client, create_user, create_category):
     user = create_user(
         nickname="postuser",
@@ -271,11 +274,45 @@ def test_delete_post_success(client, create_user, create_category):
     assert create_response.status_code == 201
     post_id = create_response.json()["post_id"]
 
+    like_response = client.post(
+        f"/api/posts/{post_id}/likes",
+        headers=headers,
+    )
+    assert like_response.status_code == 201
+
+    comment_response = client.post(
+        f"/api/posts/{post_id}/comments",
+        headers=headers,
+        json={
+            "content": "게시글 삭제 cascade 테스트 댓글",
+            "is_public": "PUBLIC",
+        },
+    )
+    assert comment_response.status_code == 201
+
     delete_response = client.delete(
         f"/api/posts/{post_id}",
         headers=headers,
     )
     assert delete_response.status_code == 204
+
+    db = SessionLocal()
+    try:
+        remaining_comments = (
+            db.query(Comment)
+            .filter(Comment.post_id == post_id)
+            .count()
+        )
+        remaining_likes = (
+            db.query(PostLike)
+            .filter(PostLike.post_id == post_id)
+            .count()
+        )
+    finally:
+        db.close()
+
+    assert remaining_comments == 0
+    assert remaining_likes == 0
 
     get_response = client.get(
         f"/api/posts/{post_id}",
@@ -874,3 +911,74 @@ def test_delete_post_invalidates_redis_cache(
 
     # 기존 캐시가 삭제되었는지 확인
     assert redis_client.get(POSTS_CACHE_KEY) is None
+
+
+
+# 잘못된 JSON 캐시가 있을 때 DB 조회로 복구
+def test_get_posts_recovers_from_invalid_json_cache(
+    client,
+    create_user,
+):
+    user = create_user(
+        nickname="cacheinvalid",
+        email="cacheinvalid@example.com",
+    )
+    headers = user["headers"]
+
+    # 잘못된 JSON 데이터를 Redis에 저장
+    redis_client.set(POSTS_CACHE_KEY, "{invalid json")
+
+    # 게시글 목록 조회
+    with patch(
+        "app.routers.posts.query_public_posts"
+    ) as mock_query:
+        mock_query.return_value = []
+
+        response = client.get(
+            "/api/posts",
+            headers=headers,
+        )
+
+    # DB 조회 결과를 정상적으로 반환해야 한다.
+    assert response.status_code == 200
+    assert response.json() == []
+    mock_query.assert_called_once()
+
+    # 잘못된 캐시가 삭제되고 정상적인 캐시로 교체되었는지 확인
+    cached_data = redis_client.get(POSTS_CACHE_KEY)
+    assert cached_data is not None
+    assert json.loads(cached_data) == []
+
+
+
+# Redis 조회 장애 시 DB 조회로 복구
+def test_get_posts_falls_back_to_db_when_redis_fails(
+    client,
+    create_user,
+):
+    from redis.exceptions import ConnectionError as RedisConnectionError
+
+    user = create_user(
+        nickname="cacheredisfail",
+        email="cacheredisfail@example.com",
+    )
+    headers = user["headers"]
+
+    # Redis 조회 시 연결 오류 발생
+    with patch(
+        "app.routers.posts.redis_client.get",
+        side_effect=RedisConnectionError("Redis 연결 실패"),
+    ):
+        with patch(
+            "app.routers.posts.query_public_posts",
+            return_value=[],
+        ) as mock_query:
+            response = client.get(
+                "/api/posts",
+                headers=headers,
+            )
+
+    # Redis 장애에도 DB 조회 결과를 정상 반환해야 한다.
+    assert response.status_code == 200
+    assert response.json() == []
+    mock_query.assert_called_once()

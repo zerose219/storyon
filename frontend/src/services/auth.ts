@@ -4,6 +4,7 @@ import type {
   LoginRequest,
   LoginResponse,
 } from "../types/auth";
+import { apiRequest } from "./api";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -55,25 +56,13 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
 // 인증된 API 요청을 위한 함수
 
 export async function getMyInfo() {
-  const token = localStorage.getItem("access_token");
-
-  if (!token) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const response = await fetch("http://localhost:8000/api/auth/me", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
-  }
+  const response = await apiRequest("/api/auth/me");
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+    }
+
     throw new Error("사용자 정보를 불러오지 못했습니다.");
   }
 

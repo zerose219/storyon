@@ -1,17 +1,9 @@
-const API_BASE_URL = "http://localhost:8000";
+import { apiRequest } from "./api";
 
 export interface PostLikeInfo {
   post_id: number;
   like_count: number;
   liked: boolean;
-}
-
-function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem("access_token");
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -36,39 +28,36 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export async function getPostLikes(
-  postId: number
+  postId: number,
 ): Promise<PostLikeInfo> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/posts/${postId}/likes`,
-    { headers: getAuthHeaders() }
+  const response = await apiRequest(
+    `/api/posts/${postId}/likes`,
   );
 
   return handleResponse<PostLikeInfo>(response);
 }
 
 export async function createPostLike(
-  postId: number
+  postId: number,
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/posts/${postId}/likes`,
+  const response = await apiRequest(
+    `/api/posts/${postId}/likes`,
     {
       method: "POST",
-      headers: getAuthHeaders(),
-    }
+    },
   );
 
   await handleResponse<void>(response);
 }
 
 export async function deletePostLike(
-  postId: number
+  postId: number,
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/posts/${postId}/likes`,
+  const response = await apiRequest(
+    `/api/posts/${postId}/likes`,
     {
       method: "DELETE",
-      headers: getAuthHeaders(),
-    }
+    },
   );
 
   await handleResponse<void>(response);

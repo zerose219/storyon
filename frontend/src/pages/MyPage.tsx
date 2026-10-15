@@ -9,6 +9,8 @@ import {
   getCategories,
   type Category,
 } from "../services/categories";
+import "../styles/common.css";
+import "./MyPage.css";
 
 type UserInfo = {
   user_id: number;
@@ -79,60 +81,130 @@ function MyPage() {
   }
 
   if (userLoading) {
-    return <p>사용자 정보를 불러오는 중...</p>;
+    return (
+      <main className="page-container">
+        <section className="card status-message-empty">
+          사용자 정보를 불러오는 중...
+        </section>
+      </main>
+    );
   }
 
   if (userError || !user) {
     return (
-      <main>
-        <p>{userError || "사용자 정보를 불러오지 못했습니다."}</p>
-        <button
-          type="button"
-          onClick={handleLogout}
-        >
-          로그인 화면으로
-        </button>
+      <main className="page-container">
+        <section className="card">
+          <p className="status-message status-message-error" role="alert">
+            {userError || "사용자 정보를 불러오지 못했습니다."}
+          </p>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleLogout}
+          >
+            로그인 화면으로
+          </button>
+        </section>
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>마이페이지</h1>
-
-      <section>
-        <h2>내 정보</h2>
-        <p>사용자 ID: {user.user_id}</p>
-        <p>닉네임: {user.nickname}</p>
-        <p>이메일: {user.email}</p>
-
-        <button
-          type="button"
-          onClick={handleLogout}
-        >
-          로그아웃
-        </button>
+    <main className="page-container mypage">
+      <section className="page-heading">
+        <div>
+          <h1>마이페이지</h1>
+          <p className="page-description">
+            내 계정 정보와 작성한 게시글을 관리하세요.
+          </p>
+        </div>
 
         <button
           type="button"
+          className="btn btn-secondary"
           onClick={() => navigate("/posts")}
         >
           게시글 목록으로
         </button>
       </section>
 
-      <section>
-        <h2>내 게시글</h2>
+      <section className="card mypage-profile">
+        <div className="mypage-section-heading">
+          <div>
+            <h2>내 정보</h2>
+            <p>현재 로그인한 계정 정보입니다.</p>
+          </div>
+        </div>
+
+        <div className="mypage-info-list">
+          <div className="mypage-info-item">
+            <span>사용자 ID</span>
+            <strong>{user.user_id}</strong>
+          </div>
+
+          <div className="mypage-info-item">
+            <span>닉네임</span>
+            <strong>{user.nickname}</strong>
+          </div>
+
+          <div className="mypage-info-item">
+            <span>이메일</span>
+            <strong>{user.email}</strong>
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate("/posts")}
+          >
+            게시글 목록
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={handleLogout}
+          >
+            로그아웃
+          </button>
+        </div>
+      </section>
+
+      <section className="mypage-posts-section">
+        <div className="mypage-section-heading">
+          <div>
+            <h2>내 게시글</h2>
+            <p>내가 작성한 게시글을 확인하세요.</p>
+          </div>
+
+          {!postsLoading && !postsError && (
+            <span className="mypage-post-count">
+              {posts.length}개
+            </span>
+          )}
+        </div>
 
         {postsLoading && (
-          <p>게시글을 불러오는 중입니다...</p>
+          <div className="card status-message-empty">
+            게시글을 불러오는 중입니다...
+          </div>
         )}
 
         {postsError && (
-          <div>
-            <p role="alert">{postsError}</p>
+          <div className="card">
+            <p
+              role="alert"
+              className="status-message status-message-error"
+            >
+              {postsError}
+            </p>
+
             <button
               type="button"
+              className="btn btn-primary"
               onClick={() => window.location.reload()}
             >
               다시 시도
@@ -143,13 +215,24 @@ function MyPage() {
         {!postsLoading &&
           !postsError &&
           posts.length === 0 && (
-            <p>작성한 게시글이 없습니다.</p>
+            <div className="card status-message-empty">
+              작성한 게시글이 없습니다.
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => navigate("/posts/new")}
+                >
+                  첫 게시글 작성하기
+                </button>
+              </div>
+            </div>
           )}
 
         {!postsLoading &&
           !postsError &&
           posts.length > 0 && (
-            <ul>
+            <div className="mypage-post-list">
               {posts.map((post) => {
                 const category = categories.find(
                   (item) =>
@@ -157,47 +240,66 @@ function MyPage() {
                 );
 
                 return (
-                  <li key={post.post_id}>
-                    <h3>
+                  <article
+                    className="card mypage-post-card"
+                    key={post.post_id}
+                  >
+                    <div className="mypage-post-meta">
+                      <span className="post-category">
+                        {category?.category_name ?? "미분류"}
+                      </span>
+
+                      <span
+                        className={`post-status ${
+                          post.status === "DRAFT"
+                            ? "post-status-draft"
+                            : "post-status-published"
+                        }`}
+                      >
+                        {post.status === "DRAFT"
+                          ? "임시저장"
+                          : "게시됨"}
+                      </span>
+
+                      <span className="post-visibility">
+                        {post.visibility === "PUBLIC"
+                          ? "공개"
+                          : "비공개"}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="mypage-post-title"
+                      onClick={() =>
+                        navigate(`/posts/${post.post_id}`)
+                      }
+                    >
+                      {post.title}
+                    </button>
+
+                    <div className="mypage-post-footer">
+                      <span>
+                        작성일:{" "}
+                        {new Date(
+                          post.created_at
+                        ).toLocaleString()}
+                      </span>
+
                       <button
                         type="button"
+                        className="btn btn-secondary"
                         onClick={() =>
                           navigate(`/posts/${post.post_id}`)
                         }
                       >
-                        {post.title}
+                        자세히 보기 →
                       </button>
-                    </h3>
-
-                    <p>
-                      카테고리:{" "}
-                      {category?.category_name ?? "미분류"}
-                    </p>
-
-                    <p>
-                      상태:{" "}
-                      {post.status === "DRAFT"
-                        ? "임시저장"
-                        : "게시됨"}
-                    </p>
-
-                    <p>
-                      공개 설정:{" "}
-                      {post.visibility === "PUBLIC"
-                        ? "공개"
-                        : "비공개"}
-                    </p>
-
-                    <p>
-                      작성일:{" "}
-                      {new Date(
-                        post.created_at
-                      ).toLocaleString()}
-                    </p>
-                  </li>
+                    </div>
+                  </article>
                 );
               })}
-            </ul>
+            </div>
           )}
       </section>
     </main>

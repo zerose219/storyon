@@ -1,3 +1,5 @@
+import { apiRequest } from "./api";
+
 export interface Comment {
   comment_id: number;
   post_id: number;
@@ -17,17 +19,6 @@ export interface CommentCreate {
 export interface CommentUpdate {
   content?: string;
   is_public?: "PUBLIC" | "PRIVATE";
-}
-
-const API_BASE_URL = "http://localhost:8000";
-
-function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem("access_token");
-
-  return {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -52,11 +43,10 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export async function getComments(
-  postId: number
+  postId: number,
 ): Promise<Comment[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/posts/${postId}/comments`,
-    { headers: getAuthHeaders() }
+  const response = await apiRequest(
+    `/api/posts/${postId}/comments`,
   );
 
   return handleResponse<Comment[]>(response);
@@ -64,15 +54,14 @@ export async function getComments(
 
 export async function createComment(
   postId: number,
-  data: CommentCreate
+  data: CommentCreate,
 ): Promise<Comment> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/posts/${postId}/comments`,
+  const response = await apiRequest(
+    `/api/posts/${postId}/comments`,
     {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify(data),
-    }
+    },
   );
 
   return handleResponse<Comment>(response);
@@ -81,15 +70,14 @@ export async function createComment(
 export async function updateComment(
   postId: number,
   commentId: number,
-  data: CommentUpdate
+  data: CommentUpdate,
 ): Promise<Comment> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/posts/${postId}/comments/${commentId}`,
+  const response = await apiRequest(
+    `/api/posts/${postId}/comments/${commentId}`,
     {
       method: "PATCH",
-      headers: getAuthHeaders(),
       body: JSON.stringify(data),
-    }
+    },
   );
 
   return handleResponse<Comment>(response);
@@ -97,14 +85,13 @@ export async function updateComment(
 
 export async function deleteComment(
   postId: number,
-  commentId: number
+  commentId: number,
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/posts/${postId}/comments/${commentId}`,
+  const response = await apiRequest(
+    `/api/posts/${postId}/comments/${commentId}`,
     {
       method: "DELETE",
-      headers: getAuthHeaders(),
-    }
+    },
   );
 
   await handleResponse<void>(response);

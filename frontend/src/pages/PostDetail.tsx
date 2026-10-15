@@ -24,6 +24,8 @@ import {
   deletePostLike,
   type PostLikeInfo,
 } from "../services/postLikes";
+import "../styles/common.css";
+import "./PostDetail.css";
 
 function PostDetail() {
   const { postId } = useParams();
@@ -262,22 +264,42 @@ function PostDetail() {
   }
 
   if (loading) {
-    return <p>게시글을 불러오는 중입니다...</p>;
+    return (
+      <main className="page-container">
+        <section className="card status-message-empty">
+          게시글을 불러오는 중입니다...
+        </section>
+      </main>
+    );
   }
 
   if (error && !post) {
     return (
-      <div>
-        <p role="alert">{error}</p>
-        <button type="button" onClick={() => navigate("/posts")}>
-          목록으로
-        </button>
-      </div>
+      <main className="page-container">
+        <section className="card">
+          <p role="alert" className="status-message status-message-error">
+            {error}
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate("/posts")}
+          >
+            목록으로
+          </button>
+        </section>
+      </main>
     );
   }
 
   if (!post) {
-    return <p>게시글이 없습니다.</p>;
+    return (
+      <main className="page-container">
+        <section className="card status-message-empty">
+          게시글이 없습니다.
+        </section>
+      </main>
+    );
   }
 
   const category = categories.find(
@@ -285,183 +307,262 @@ function PostDetail() {
   );
 
   return (
-    <div>
-      <h1>{post.title}</h1>
+    <main className="page-container post-detail-page">
+      {/* 게시글 본문 */}
+      <article className="card post-detail-card">
+        <div className="post-detail-meta">
+          <span className="post-category">
+            {category?.category_name ?? "미분류"}
+          </span>
+          <span
+            className={`post-status ${
+              post.status === "DRAFT"
+                ? "post-status-draft"
+                : "post-status-published"
+            }`}
+          >
+            {post.status === "DRAFT" ? "임시저장" : "게시됨"}
+          </span>
+          <span className="post-visibility">
+            {post.visibility === "PUBLIC" ? "공개" : "비공개"}
+          </span>
+        </div>
 
-      <p>작성자 ID: {post.user_id}</p>
-      <p>카테고리: {category?.category_name ?? "미분류"}</p>
-      <p>상태: {post.status === "DRAFT" ? "임시저장" : "게시됨"}</p>
-      <p>공개 설정: {post.visibility === "PUBLIC" ? "공개" : "비공개"}</p>
-      <p>작성일: {new Date(post.created_at).toLocaleString()}</p>
+        <h1 className="post-detail-title">{post.title}</h1>
 
-      <hr />
+        <div className="post-detail-info">
+          <span>작성자 ID: {post.user_id}</span>
+          <span>
+            작성일: {new Date(post.created_at).toLocaleString()}
+          </span>
+        </div>
 
-      <div style={{ whiteSpace: "pre-wrap" }}>{post.content}</div>
+        <div className="post-detail-content">{post.content}</div>
 
-      {error && <p role="alert">{error}</p>}
-
-      <div>
-        {currentUserId === post.user_id && (
-          <>
-            <button
-              type="button"
-              onClick={() => navigate(`/posts/${post.post_id}/edit`)}
-            >
-              수정
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? "삭제 중..." : "삭제"}
-            </button>
-          </>
+        {error && (
+          <p role="alert" className="status-message status-message-error">
+            {error}
+          </p>
         )}
 
-        <button type="button" onClick={() => navigate("/posts")}>
-          목록으로
-        </button>
-      </div>
+        <div className="form-actions post-detail-actions">
+          {currentUserId === post.user_id && (
+            <>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate(`/posts/${post.post_id}/edit`)}
+              >
+                수정
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? "삭제 중..." : "삭제"}
+              </button>
+            </>
+          )}
 
-      <hr />
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate("/posts")}
+          >
+            목록으로
+          </button>
+        </div>
+      </article>
 
       {/* 좋아요 */}
-      <section>
-        <h2>좋아요</h2>
+      <section className="card post-detail-section">
+        <div className="post-section-heading">
+          <div>
+            <h2>좋아요</h2>
+            <p>이 게시글이 마음에 든다면 좋아요를 눌러 보세요.</p>
+          </div>
+          {likeInfo && (
+            <span className="like-count">
+              좋아요 {likeInfo.like_count}개
+            </span>
+          )}
+        </div>
 
         {likeInfo && (
-          <>
-            <button
-              type="button"
-              onClick={handleToggleLike}
-              disabled={liking}
-            >
-              {liking
-                ? "처리 중..."
-                : likeInfo.liked
-                  ? "♥ 좋아요 취소"
-                  : "♡ 좋아요"}
-            </button>
-
-            <span> 좋아요 {likeInfo.like_count}개</span>
-          </>
+          <button
+            type="button"
+            className={`btn ${
+              likeInfo.liked ? "btn-danger" : "btn-primary"
+            }`}
+            onClick={handleToggleLike}
+            disabled={liking}
+          >
+            {liking
+              ? "처리 중..."
+              : likeInfo.liked
+                ? "♥ 좋아요 취소"
+                : "♡ 좋아요"}
+          </button>
         )}
 
-        {likeError && <p role="alert">{likeError}</p>}
+        {likeError && (
+          <p role="alert" className="status-message status-message-error">
+            {likeError}
+          </p>
+        )}
       </section>
 
-      <hr />
-
       {/* 댓글 */}
-      <section>
-        <h2>댓글 ({comments.length})</h2>
-
-        <form onSubmit={handleCreateComment}>
+      <section className="card post-detail-section">
+        <div className="post-section-heading">
           <div>
+            <h2>댓글</h2>
+            <p>궁금한 점이나 의견을 남겨 보세요.</p>
+          </div>
+          <span className="like-count">{comments.length}개</span>
+        </div>
+
+        <form className="comment-form" onSubmit={handleCreateComment}>
+          <div className="form-group">
             <label htmlFor="comment-content">댓글 내용</label>
-            <br />
             <textarea
               id="comment-content"
               value={commentContent}
               onChange={(event) => setCommentContent(event.target.value)}
-              rows={3}
+              rows={4}
+              placeholder="댓글을 입력하세요."
               required
             />
           </div>
 
-          <div>
-            <label htmlFor="comment-visibility">공개 설정</label>
-            {" "}
-            <select
-              id="comment-visibility"
-              value={commentVisibility}
-              onChange={(event) =>
-                setCommentVisibility(
-                  event.target.value as "PUBLIC" | "PRIVATE"
-                )
-              }
-            >
-              <option value="PUBLIC">공개</option>
-              <option value="PRIVATE">비공개</option>
-            </select>
-          </div>
+          <div className="comment-form-footer">
+            <div className="comment-visibility">
+              <label htmlFor="comment-visibility">공개 설정</label>
+              <select
+                id="comment-visibility"
+                value={commentVisibility}
+                onChange={(event) =>
+                  setCommentVisibility(
+                    event.target.value as "PUBLIC" | "PRIVATE"
+                  )
+                }
+              >
+                <option value="PUBLIC">공개</option>
+                <option value="PRIVATE">비공개</option>
+              </select>
+            </div>
 
-          <button type="submit" disabled={submittingComment}>
-            {submittingComment ? "등록 중..." : "댓글 작성"}
-          </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={submittingComment}
+            >
+              {submittingComment ? "등록 중..." : "댓글 작성"}
+            </button>
+          </div>
         </form>
 
-        {commentError && <p role="alert">{commentError}</p>}
+        {commentError && (
+          <p role="alert" className="status-message status-message-error">
+            {commentError}
+          </p>
+        )}
 
         {comments.length === 0 ? (
-          <p>아직 댓글이 없습니다.</p>
+          <div className="status-message-empty comment-empty">
+            아직 댓글이 없습니다. 첫 댓글을 남겨 보세요.
+          </div>
         ) : (
-          <ul>
+          <ul className="comment-list">
             {comments.map((comment) => (
-              <li key={comment.comment_id}>
-                <p>
-                  <strong>{comment.nickname}</strong>
-                  {" · "}
-                  {comment.is_public === "PUBLIC" ? "공개" : "비공개"}
-                  {" · "}
-                  {new Date(comment.created_at).toLocaleString()}
-                </p>
+              <li className="comment-item" key={comment.comment_id}>
+                <div className="comment-item-header">
+                  <div className="comment-author-info">
+                    <strong>{comment.nickname}</strong>
+                    <span className="comment-visibility-badge">
+                      {comment.is_public === "PUBLIC" ? "공개" : "비공개"}
+                    </span>
+                  </div>
+                  <span className="comment-date">
+                    {new Date(comment.created_at).toLocaleString()}
+                  </span>
+                </div>
 
                 {editingCommentId === comment.comment_id ? (
-                  <div>
-                    <textarea
-                      value={editingContent}
-                      onChange={(event) =>
-                        setEditingContent(event.target.value)
-                      }
-                      rows={3}
-                    />
-
-                    <div>
-                      <label>공개 설정 </label>
-                      <select
-                        value={editingVisibility}
+                  <div className="comment-edit-form">
+                    <div className="form-group">
+                      <label htmlFor={`edit-comment-${comment.comment_id}`}>
+                        댓글 내용
+                      </label>
+                      <textarea
+                        id={`edit-comment-${comment.comment_id}`}
+                        value={editingContent}
                         onChange={(event) =>
-                          setEditingVisibility(
-                            event.target.value as "PUBLIC" | "PRIVATE"
-                          )
+                          setEditingContent(event.target.value)
                         }
-                      >
-                        <option value="PUBLIC">공개</option>
-                        <option value="PRIVATE">비공개</option>
-                      </select>
+                        rows={3}
+                      />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateComment(comment.comment_id)}
-                    >
-                      저장
-                    </button>
+                    <div className="comment-form-footer">
+                      <div className="comment-visibility">
+                        <label htmlFor={`edit-visibility-${comment.comment_id}`}>
+                          공개 설정
+                        </label>
+                        <select
+                          id={`edit-visibility-${comment.comment_id}`}
+                          value={editingVisibility}
+                          onChange={(event) =>
+                            setEditingVisibility(
+                              event.target.value as "PUBLIC" | "PRIVATE"
+                            )
+                          }
+                        >
+                          <option value="PUBLIC">공개</option>
+                          <option value="PRIVATE">비공개</option>
+                        </select>
+                      </div>
 
-                    <button type="button" onClick={cancelEditingComment}>
-                      취소
-                    </button>
+                      <div className="form-actions comment-actions">
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() =>
+                            handleUpdateComment(comment.comment_id)
+                          }
+                        >
+                          저장
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={cancelEditingComment}
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <p style={{ whiteSpace: "pre-wrap" }}>{comment.content}</p>
+                  <p className="comment-content">{comment.content}</p>
                 )}
 
                 {currentUserId === comment.user_id && (
-                  <div>
+                  <div className="form-actions comment-actions">
                     {editingCommentId !== comment.comment_id && (
                       <button
                         type="button"
+                        className="btn btn-secondary"
                         onClick={() => startEditingComment(comment)}
                       >
                         댓글 수정
                       </button>
                     )}
-
                     <button
                       type="button"
+                      className="btn btn-danger"
                       onClick={() => handleDeleteComment(comment.comment_id)}
                     >
                       댓글 삭제
@@ -473,7 +574,7 @@ function PostDetail() {
           </ul>
         )}
       </section>
-    </div>
+    </main>
   );
 }
 

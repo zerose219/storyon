@@ -98,10 +98,14 @@ class Post(Base):
 
     comments = relationship(
         "Comment",
-        back_populates="post"
+        back_populates="post",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     post_likes = relationship(
         "PostLike",
-        back_populates="post"
+        back_populates="post",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

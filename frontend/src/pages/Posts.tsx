@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getPosts,
@@ -9,7 +9,8 @@ import {
   getCategories,
   type Category,
 } from "../services/categories";
-import { logout } from "../services/auth";
+import "../styles/common.css";
+import "./Posts.css";
 
 function Posts() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -23,7 +24,7 @@ function Posts() {
   const navigate = useNavigate();
 
   // 게시글 및 카테고리 목록 조회
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -44,7 +45,7 @@ function Posts() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 게시글 제목 검색
   const handleSearch = async () => {
@@ -70,12 +71,6 @@ function Posts() {
     }
   };
 
-  // 로그아웃
-  function handleLogout() {
-    logout();
-    navigate("/login", { replace: true });
-  }
-
   // 카테고리별 게시글 필터링
   const filteredPosts =
     selectedCategoryId === "all"
@@ -87,151 +82,191 @@ function Posts() {
 
   // 페이지 진입 시 데이터 조회
   useEffect(() => {
-    loadPosts();
-  }, []);
+    void Promise.resolve().then(loadPosts);
+  }, [loadPosts]);
 
   if (loading) {
-    return <p>게시글을 불러오는 중입니다...</p>;
+    return (
+      <main className="page-container">
+        <section className="card status-message-empty">
+          게시글을 불러오는 중입니다...
+        </section>
+      </main>
+    );
   }
 
   if (error) {
     return (
-      <div>
-        <p>{error}</p>
-        <button type="button" onClick={loadPosts}>
-          다시 시도
-        </button>
-      </div>
+      <main className="page-container">
+        <section className="card">
+          <p className="status-message status-message-error">
+            {error}
+          </p>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={loadPosts}
+          >
+            다시 시도
+          </button>
+        </section>
+      </main>
     );
   }
 
   return (
-    <div>
-      {/* 상단 메뉴 */}
-      <div>
+    <main className="page-container">
+      <section className="page-heading">
+        <div>
+          <h1>게시글</h1>
+          <p className="page-description">
+            개발하며 배운 내용을 기록하고 공유해 보세요.
+          </p>
+        </div>
+
         <button
           type="button"
+          className="btn btn-primary"
           onClick={() => navigate("/posts/new")}
         >
-          새 게시글 작성
+          + 새 게시글 작성
         </button>
+      </section>
 
-        <button
-          type="button"
-          onClick={() => navigate("/mypage")}
-        >
-          마이페이지
-        </button>
+      <section className="card">
+        <div className="form-group">
+          <label htmlFor="post-search">게시글 검색</label>
 
-        <button
-          type="button"
-          onClick={handleLogout}
-        >
-          로그아웃
-        </button>
-      </div>
+          <div className="posts-search">
+            <input
+              id="post-search"
+              type="text"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                }
+              }}
+              placeholder="게시글 제목을 검색하세요"
+            />
 
-      {/* 게시글 제목 검색 */}
-      <div>
-        <input
-          type="text"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleSearch();
-            }
-          }}
-          placeholder="게시글 제목 검색"
-        />
-
-        <button type="button" onClick={handleSearch}>
-          검색
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setKeyword("");
-            setSelectedCategoryId("all");
-            loadPosts();
-          }}
-        >
-          전체 목록
-        </button>
-      </div>
-
-      {/* 카테고리 선택 */}
-      <div>
-        <label htmlFor="category-filter">
-          카테고리:
-        </label>
-
-        <select
-          id="category-filter"
-          value={selectedCategoryId}
-          onChange={(e) =>
-            setSelectedCategoryId(e.target.value)
-          }
-        >
-          <option value="all">전체 카테고리</option>
-
-          {categories.map((category) => (
-            <option
-              key={category.category_id}
-              value={String(category.category_id)}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSearch}
             >
-              {category.category_name}
-            </option>
-          ))}
-        </select>
-      </div>
+              검색
+            </button>
 
-      {/* 게시글 목록 */}
-      {filteredPosts.length === 0 ? (
-        <p>해당하는 게시글이 없습니다.</p>
-      ) : (
-        <ul>
-          {filteredPosts.map((post) => {
-            const category = categories.find(
-              (item) =>
-                item.category_id === post.category_id
-            );
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setKeyword("");
+                setSelectedCategoryId("all");
+                loadPosts();
+              }}
+            >
+              전체 목록
+            </button>
+          </div>
+        </div>
 
-            return (
-              <li key={post.post_id}>
-                <h2>
+        <div className="form-group">
+          <label htmlFor="category-filter">카테고리</label>
+
+          <select
+            id="category-filter"
+            value={selectedCategoryId}
+            onChange={(e) =>
+              setSelectedCategoryId(e.target.value)
+            }
+          >
+            <option value="all">전체 카테고리</option>
+
+            {categories.map((category) => (
+              <option
+                key={category.category_id}
+                value={String(category.category_id)}
+              >
+                {category.category_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
+      <section className="posts-list-section">
+        <div className="posts-list-heading">
+          <h2>전체 게시글</h2>
+          <span>{filteredPosts.length}개</span>
+        </div>
+
+        {filteredPosts.length === 0 ? (
+          <div className="card status-message-empty">
+            해당하는 게시글이 없습니다.
+          </div>
+        ) : (
+          <div className="posts-list">
+            {filteredPosts.map((post) => {
+              const category = categories.find(
+                (item) =>
+                  item.category_id === post.category_id
+              );
+
+              return (
+                <article
+                  className="card post-card"
+                  key={post.post_id}
+                >
+                  <div className="post-card__top">
+                    <span className="post-category">
+                      {category?.category_name ?? "미분류"}
+                    </span>
+
+                    <span className="post-date">
+                      {new Date(
+                        post.created_at
+                      ).toLocaleString()}
+                    </span>
+                  </div>
+
                   <button
                     type="button"
+                    className="post-title"
                     onClick={() =>
                       navigate(`/posts/${post.post_id}`)
                     }
                   >
                     {post.title}
                   </button>
-                </h2>
 
-                <p>{post.content}</p>
+                  <p className="post-content">
+                    {post.content}
+                  </p>
 
-                <p>
-                  카테고리:{" "}
-                  {category?.category_name ?? "미분류"}
-                </p>
+                  <div className="post-card__footer">
+                    <span>작성자 ID: {post.user_id}</span>
 
-                <p>작성자 ID: {post.user_id}</p>
-
-                <p>
-                  작성일:{" "}
-                  {new Date(
-                    post.created_at
-                  ).toLocaleString()}
-                </p>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() =>
+                        navigate(`/posts/${post.post_id}`)
+                      }
+                    >
+                      자세히 보기 →
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }
 

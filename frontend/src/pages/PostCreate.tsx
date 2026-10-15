@@ -8,6 +8,8 @@ import {
   getCategories,
   type Category,
 } from "../services/categories";
+import "../styles/common.css";
+import "./PostCreate.css";
 
 function PostCreate() {
   const [title, setTitle] = useState("");
@@ -85,12 +87,27 @@ function PostCreate() {
   }
 
   return (
-    <div>
-      <h1>게시글 작성</h1>
-
-      <form onSubmit={handleSubmit}>
-        {/* 제목 */}
+    <main className="page-container post-create-page">
+      <section className="page-heading">
         <div>
+          <h1>게시글 작성</h1>
+          <p className="page-description">
+            새롭게 배운 내용과 경험을 기록해 보세요.
+          </p>
+        </div>
+      </section>
+
+      <form className="card post-form" onSubmit={handleSubmit}>
+        {error && (
+          <p
+            role="alert"
+            className="status-message status-message-error"
+          >
+            {error}
+          </p>
+        )}
+
+        <div className="form-group">
           <label htmlFor="title">제목</label>
           <input
             id="title"
@@ -98,109 +115,120 @@ function PostCreate() {
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             maxLength={255}
+            placeholder="게시글 제목을 입력하세요"
             required
           />
+          <span className="form-help">
+            최대 255자까지 입력할 수 있습니다.
+          </span>
         </div>
 
-        {/* 내용 */}
-        <div>
+        <div className="form-group">
           <label htmlFor="content">내용</label>
           <textarea
             id="content"
+            className="post-content-input"
             value={content}
             onChange={(event) => setContent(event.target.value)}
-            rows={10}
+            rows={14}
+            placeholder="공유하고 싶은 학습 내용이나 경험을 작성하세요."
             required
           />
         </div>
 
-        {/* 카테고리 선택 */}
-        <div>
-          <label htmlFor="categoryId">카테고리</label>
-
-          <select
-            id="categoryId"
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-            required
-            disabled={loadingCategories || categories.length === 0}
-          >
-            <option value="">
-              {loadingCategories
-                ? "카테고리 불러오는 중..."
-                : "카테고리를 선택하세요"}
-            </option>
-
-            {categories.map((category) => (
-              <option
-                key={category.category_id}
-                value={String(category.category_id)}
-              >
-                {category.category_name}
+        <div className="post-form-options">
+          <div className="form-group">
+            <label htmlFor="categoryId">카테고리</label>
+            <select
+              id="categoryId"
+              value={categoryId}
+              onChange={(event) =>
+                setCategoryId(event.target.value)
+              }
+              required
+              disabled={
+                loadingCategories || categories.length === 0
+              }
+            >
+              <option value="">
+                {loadingCategories
+                  ? "카테고리 불러오는 중..."
+                  : "카테고리를 선택하세요"}
               </option>
-            ))}
-          </select>
 
-          {!loadingCategories && categories.length === 0 && (
-            <p>등록된 카테고리가 없습니다.</p>
-          )}
+              {categories.map((category) => (
+                <option
+                  key={category.category_id}
+                  value={String(category.category_id)}
+                >
+                  {category.category_name}
+                </option>
+              ))}
+            </select>
+
+            {!loadingCategories && categories.length === 0 && (
+              <p className="form-help">
+                등록된 카테고리가 없습니다.
+              </p>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="status">게시글 상태</label>
+            <select
+              id="status"
+              value={status}
+              onChange={(event) =>
+                setStatus(
+                  event.target.value as "DRAFT" | "PUBLISHED"
+                )
+              }
+            >
+              <option value="DRAFT">임시저장</option>
+              <option value="PUBLISHED">게시</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="visibility">공개 설정</label>
+            <select
+              id="visibility"
+              value={visibility}
+              onChange={(event) =>
+                setVisibility(
+                  event.target.value as "PUBLIC" | "PRIVATE"
+                )
+              }
+            >
+              <option value="PUBLIC">공개</option>
+              <option value="PRIVATE">비공개</option>
+            </select>
+          </div>
         </div>
 
-        {/* 게시글 상태 */}
-        <div>
-          <label htmlFor="status">게시글 상태</label>
-          <select
-            id="status"
-            value={status}
-            onChange={(event) =>
-              setStatus(event.target.value as "DRAFT" | "PUBLISHED")
+        <div className="form-actions post-form-actions">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={
+              submitting ||
+              loadingCategories ||
+              categories.length === 0
             }
           >
-            <option value="DRAFT">임시저장</option>
-            <option value="PUBLISHED">게시</option>
-          </select>
-        </div>
+            {submitting ? "작성 중..." : "게시글 작성"}
+          </button>
 
-        {/* 공개 설정 */}
-        <div>
-          <label htmlFor="visibility">공개 설정</label>
-          <select
-            id="visibility"
-            value={visibility}
-            onChange={(event) =>
-              setVisibility(
-                event.target.value as "PUBLIC" | "PRIVATE"
-              )
-            }
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate("/posts")}
           >
-            <option value="PUBLIC">공개</option>
-            <option value="PRIVATE">비공개</option>
-          </select>
+            취소
+          </button>
         </div>
-
-        {/* 오류 메시지 */}
-        {error && <p role="alert">{error}</p>}
-
-        {/* 버튼 */}
-        <button
-          type="submit"
-          disabled={
-            submitting ||
-            loadingCategories ||
-            categories.length === 0
-          }
-        >
-          {submitting ? "작성 중..." : "게시글 작성"}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate("/posts")}
-        >
-          취소
-        </button>
       </form>
-    </div>
+    </main>
   );
 }
 

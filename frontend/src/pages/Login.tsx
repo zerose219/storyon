@@ -1,8 +1,13 @@
 import { useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { login } from "../services/auth";
 import "./Login.css";
 
 function Login() {
+  const location = useLocation();
+  const navigationMessage =
+    (location.state as { message?: string } | null)?.message;
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -14,13 +19,12 @@ function Login() {
     setIsLoading(true);
 
     try {
-      const result = await login({
+      await login({
         email,
         password,
       });
 
-      setMessage(`${result.nickname}님, ${result.message}`);
-      setPassword("");
+      navigate("/posts", { replace: true });
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -35,9 +39,9 @@ function Login() {
   return (
     <main className="login-page">
       <section className="login-card">
-        <a className="login-logo" href="/">
+        <Link className="login-logo" to="/posts">
           StoryOn
-        </a>
+        </Link>
 
         <h1>로그인</h1>
         <p className="login-description">
@@ -70,15 +74,15 @@ function Login() {
           </button>
         </form>
 
-        {message && (
+        {(message || navigationMessage) && (
           <p className="login-message" role="status">
-            {message}
+            {message || navigationMessage}
           </p>
         )}
 
         <p className="login-signup-link">
           아직 회원이 아니신가요?{" "}
-          <a href="/signup">회원가입</a>
+          <Link to="/signup">회원가입</Link>
         </p>
       </section>
     </main>
