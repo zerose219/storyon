@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import get_current_user
 from app.models import User
 from app.schemas.auth import (
     SignupRequest,
@@ -10,16 +11,11 @@ from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
 )
-
 from app.security import (
     hash_password,
     verify_password,
     create_access_token,
 )
-
-from fastapi import Depends
-from app.dependencies import get_current_user
-from app.models.user import User
 
 router = APIRouter(prefix="/api/auth", tags=["인증"])
 
