@@ -1,15 +1,21 @@
+import json
+from datetime import datetime
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-
-from typing import List
-
+from redis.exceptions import RedisError
 
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.post import Post
 from app.models.user import User
 from app.schemas.post import PostCreate, PostUpdate, PostResponse
+from app.redis_client import (
+    redis_client,
+    POSTS_CACHE_KEY,
+    POSTS_CACHE_TTL,
+)
 
 router = APIRouter(
     prefix="/api/posts",
@@ -17,6 +23,16 @@ router = APIRouter(
 )
 
 
+# 게시글 생성·수정·삭제 후 캐시 무효화
+def invalidate_posts_cache():
+    """공개 게시글 목록 캐시를 삭제한다."""
+    try:
+        redis_client.delete(POSTS_CACHE_KEY)
+    except RedisError:
+        pass
+
+
+# 게시글 작성
 @router.post(
     "",
     response_model=PostResponse,
@@ -27,7 +43,6 @@ def create_post(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # 게시글 작성 시 카테고리 존재 여부 확인
     from app.models.category import Category
 
     category = (
@@ -55,11 +70,13 @@ def create_post(
     db.commit()
     db.refresh(post)
 
+    invalidate_posts_cache()
+
     return post
 
 
 # 제목 검색
-@router.get("/search", response_model=list[PostResponse])
+@router.get("/search", response_model=List[PostResponse])
 def search_posts(
     keyword: str,
     db: Session = Depends(get_db),
@@ -79,16 +96,8 @@ def search_posts(
     return posts
 
 
-# 게시글 목록 조회
-@router.get(
-    "",
-    response_model=List[PostResponse],
-)
-def get_posts(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    posts = (
+def query_public_posts(db: Session):
+    return (
         db.query(Post)
         .filter(
             Post.visibility == "PUBLIC",
@@ -98,10 +107,63 @@ def get_posts(
         .all()
     )
 
-    return posts
+# 공개 게시글 목록 조회
+@router.get(
+    "",
+    response_model=List[PostResponse],
+)
+def get_posts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # 1. Redis 캐시 조회
+    try:
+        cached_posts = redis_client.get(POSTS_CACHE_KEY)
+
+        if cached_posts:
+            return [
+                PostResponse.model_validate(post)
+                for post in json.loads(cached_posts)
+            ]
+
+    except RedisError:
+        # Redis 조회에 실패하면 DB 조회로 진행
+        pass
+
+    # 2. 캐시가 없거나 Redis 조회에 실패하면 DB 조회
+    posts = query_public_posts(db)
+
+    # 3. DB 결과를 응답 스키마로 변환
+    response_posts = [
+        PostResponse.model_validate(post)
+        for post in posts
+    ]
+
+    # 4. Redis 캐시 저장
+    try:
+        cached_data = json.dumps(
+            [
+                post.model_dump(mode="json")
+                for post in response_posts
+            ],
+            ensure_ascii=False,
+        )
+
+        redis_client.set(
+            POSTS_CACHE_KEY,
+            cached_data,
+            ex=POSTS_CACHE_TTL,
+        )
+
+    except RedisError:
+        # 캐시 저장에 실패해도 DB 조회 결과는 반환
+        pass
+
+    return response_posts
+
 
 # 내 게시글 조회
-@router.get("/my", response_model=list[PostResponse])
+@router.get("/my", response_model=List[PostResponse])
 def get_my_posts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -115,7 +177,8 @@ def get_my_posts(
 
     return posts
 
-# 게시글 상세조회
+
+# 게시글 상세 조회
 @router.get(
     "/{post_id}",
     response_model=PostResponse,
@@ -137,7 +200,7 @@ def get_post(
             detail="게시글을 찾을 수 없습니다.",
         )
 
-    # 비공개 글은 작성자만 조회 가능
+    # 비공개 게시글은 작성자만 조회 가능
     if (
         post.visibility == "PRIVATE"
         and post.user_id != current_user.user_id
@@ -147,7 +210,7 @@ def get_post(
             detail="이 게시글을 조회할 권한이 없습니다.",
         )
 
-    # 임시저장 글도 작성자만 조회 가능
+    # 임시저장 게시글은 작성자만 조회 가능
     if (
         post.status == "DRAFT"
         and post.user_id != current_user.user_id
@@ -191,12 +254,17 @@ def update_post(
 
     update_data = post_data.model_dump(exclude_unset=True)
 
-    if "category_id" in update_data and update_data["category_id"] is not None:
+    if (
+        "category_id" in update_data
+        and update_data["category_id"] is not None
+    ):
         from app.models.category import Category
 
         category = (
             db.query(Category)
-            .filter(Category.category_id == update_data["category_id"])
+            .filter(
+                Category.category_id == update_data["category_id"]
+            )
             .first()
         )
 
@@ -209,11 +277,12 @@ def update_post(
     for field, value in update_data.items():
         setattr(post, field, value)
 
-    from datetime import datetime
     post.updated_at = datetime.now()
 
     db.commit()
     db.refresh(post)
+
+    invalidate_posts_cache()
 
     return post
 
@@ -249,7 +318,6 @@ def delete_post(
     db.delete(post)
     db.commit()
 
+    invalidate_posts_cache()
+
     return None
-
-
-

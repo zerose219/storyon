@@ -1,8 +1,8 @@
 
 from app.database import SessionLocal
 from app.models.category import Category
-
-
+from app.redis_client import redis_client, POSTS_CACHE_KEY
+from unittest.mock import patch
 
 def test_create_post_success(client, create_user, create_category):
     user = create_user(
@@ -687,3 +687,190 @@ def test_get_draft_post_forbidden_for_other_user(
     )
 
     assert response.status_code == 403
+
+
+
+# Redis 캐시 관련 테스트
+def test_get_posts_uses_redis_cache(
+    client,
+    create_user,
+    create_category,
+):
+    # 테스트 사용자 생성
+    user = create_user(
+        nickname="cacheuser",
+        email="cacheuser@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    # 공개 게시글 생성
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "Redis 캐시 테스트",
+            "content": "캐시 재사용을 확인합니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+
+    # 첫 번째 요청: DB 조회 후 Redis 캐시 저장
+    first_response = client.get(
+        "/api/posts",
+        headers=headers,
+    )
+    assert first_response.status_code == 200
+    assert first_response.json()[0]["title"] == "Redis 캐시 테스트"
+
+    # Redis에 캐시가 저장되었는지 확인
+    cached_data = redis_client.get(POSTS_CACHE_KEY)
+    assert cached_data is not None
+
+    # 두 번째 요청: Redis 캐시 사용 시 DB 조회가 생략되는지 확인
+    with patch(
+        "app.routers.posts.query_public_posts",
+        side_effect=AssertionError(
+            "캐시 적중 시 게시글 DB 조회가 발생하면 안 됩니다."
+        ),
+    ):
+        second_response = client.get(
+            "/api/posts",
+            headers=headers,
+        )
+
+
+    assert second_response.status_code == 200
+    assert second_response.json() == first_response.json()
+
+
+# 게시글 생성 시 캐시 무효화
+
+def test_create_post_invalidates_redis_cache(
+    client,
+    create_user,
+    create_category,
+):
+    user = create_user(
+        nickname="cachecreate",
+        email="cachecreate@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    # 기존 캐시 생성
+    redis_client.set(POSTS_CACHE_KEY, "old_cache")
+
+    # 게시글 생성
+    response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "캐시 무효화 테스트",
+            "content": "게시글 생성 후 캐시가 삭제되는지 확인합니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+
+    assert response.status_code == 201
+
+    # 기존 캐시가 삭제되었는지 확인
+    assert redis_client.get(POSTS_CACHE_KEY) is None
+
+
+# 게시글 수정 시 캐시 무효화
+
+def test_update_post_invalidates_redis_cache(
+    client,
+    create_user,
+    create_category,
+):
+    user = create_user(
+        nickname="cacheupdate",
+        email="cacheupdate@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    # 수정할 게시글 생성
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "수정 전 제목",
+            "content": "수정 전 내용",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+
+    post_id = create_response.json()["post_id"]
+    
+    # 기존 캐시 설정
+    redis_client.set(POSTS_CACHE_KEY, "old_cache")
+
+    # 게시글 수정
+    update_response = client.patch(
+        f"/api/posts/{post_id}",
+        headers=headers,
+        json={
+            "title": "수정 후 제목",
+        },
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["title"] == "수정 후 제목"
+
+    # 기존 캐시가 삭제되었는지 확인
+    assert redis_client.get(POSTS_CACHE_KEY) is None
+
+# 게시글 삭제 시 캐시 무효화
+
+def test_delete_post_invalidates_redis_cache(
+    client,
+    create_user,
+    create_category,
+):
+    user = create_user(
+        nickname="cachedelete",
+        email="cachedelete@example.com",
+    )
+    headers = user["headers"]
+    category_id = create_category()
+
+    # 삭제할 게시글 생성
+    create_response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "title": "삭제할 게시글",
+            "content": "삭제 후 캐시가 무효화되는지 확인합니다.",
+            "category_id": category_id,
+            "status": "PUBLISHED",
+            "visibility": "PUBLIC",
+        },
+    )
+    assert create_response.status_code == 201
+
+    post_id = create_response.json()["post_id"]
+
+    # 기존 캐시 설정
+    redis_client.set(POSTS_CACHE_KEY, "old_cache")
+
+    # 게시글 삭제
+    delete_response = client.delete(
+        f"/api/posts/{post_id}",
+        headers=headers,
+    )
+
+    assert delete_response.status_code == 204
+
+    # 기존 캐시가 삭제되었는지 확인
+    assert redis_client.get(POSTS_CACHE_KEY) is None

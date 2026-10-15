@@ -9,5 +9,8 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(
     os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 )
 
+
 if not JWT_SECRET_KEY:
     raise ValueError("JWT_SECRET_KEY 환경변수가 설정되지 않았습니다.")
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
